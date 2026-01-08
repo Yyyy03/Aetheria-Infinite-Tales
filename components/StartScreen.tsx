@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CharacterProfile, CharacterStats, Skill } from '../types';
-import { Sword, Wand, Crown, Shield, Music, Skull, Zap, Target, Sparkles, UserPen, Info, AlertTriangle, Swords, Heart } from 'lucide-react';
+import { Sword, Wand, Crown, Shield, Music, Skull, Zap, Target, Sparkles, UserPen, Info, AlertTriangle, Swords, Heart, Key, Settings, Globe, Server, Cpu, School } from 'lucide-react';
 
 interface StartScreenProps {
-  onStart: (profile: CharacterProfile) => void;
+  onStart: (profile: CharacterProfile, apiKey: string, provider: 'gemini' | 'openai', baseUrl: string, customModel: string) => void;
 }
 
 const APPEARANCE_PRESETS: Record<string, string[]> = {
@@ -107,21 +107,70 @@ const CLASS_SKILLS: Record<string, Skill[]> = {
 };
 
 const StartScreen: React.FC<StartScreenProps> = ({ onStart }) => {
+  const [apiKey, setApiKey] = useState('');
+  const [provider, setProvider] = useState<'gemini' | 'openai'>('gemini');
+  // Updated default values for SEU
+  const [baseUrl, setBaseUrl] = useState('https://openapi.seu.edu.cn/v1');
+  const [customModel, setCustomModel] = useState('qwen2.5-72b');
+  
   const [name, setName] = useState('');
   const [role, setRole] = useState('战士');
   const [appearance, setAppearance] = useState('');
 
+  // Load settings on mount
+  useEffect(() => {
+    const storedKey = localStorage.getItem('rpg_api_key');
+    const storedProvider = localStorage.getItem('rpg_provider') as 'gemini' | 'openai';
+    const storedUrl = localStorage.getItem('rpg_base_url');
+    const storedModel = localStorage.getItem('rpg_model');
+
+    if (storedKey) setApiKey(storedKey);
+    if (storedProvider) {
+        setProvider(storedProvider);
+    }
+    // Only load stored URL/Model if they exist, otherwise use the new SEU defaults
+    if (storedUrl) setBaseUrl(storedUrl);
+    if (storedModel) setCustomModel(storedModel);
+  }, []);
+
   const handleStart = () => {
     if (!name.trim() || !appearance.trim()) return;
+    
+    // Allow empty key only for local providers (user must know what they are doing)
+    if (!apiKey.trim() && !baseUrl.includes('localhost') && !baseUrl.includes('127.0.0.1')) {
+         if(provider === 'gemini') return;
+         // Warning for empty key on remote
+    }
+    
+    // Save Settings
+    localStorage.setItem('rpg_api_key', apiKey);
+    localStorage.setItem('rpg_provider', provider);
+    localStorage.setItem('rpg_base_url', baseUrl);
+    localStorage.setItem('rpg_model', customModel);
+    
     const stats = BASE_STATS[role] || { hp: 100, maxHp: 100, attack: 10, defense: 10 };
     const skills = CLASS_SKILLS[role] || [];
-    onStart({ name, role, appearance, stats, skills });
+    onStart({ name, role, appearance, stats, skills }, apiKey, provider, baseUrl, customModel);
   };
 
   const handleRoleSelect = (newRole: string) => {
     setRole(newRole);
-    // Reset appearance when changing role to avoid mismatch
     setAppearance('');
+  };
+
+  const applyPreset = (type: 'seu' | 'openrouter' | 'local') => {
+      setProvider('openai');
+      if (type === 'seu') {
+          setBaseUrl('https://openapi.seu.edu.cn/v1');
+          setCustomModel('qwen2.5-72b');
+      } else if (type === 'openrouter') {
+          setBaseUrl('https://openrouter.ai/api/v1');
+          setCustomModel('google/gemini-2.0-flash-exp:free');
+      } else if (type === 'local') {
+          setBaseUrl('http://127.0.0.1:11434/v1');
+          setCustomModel('llama3');
+          setApiKey('ollama'); // Dummy key
+      }
   };
 
   const classes = [
@@ -199,9 +248,111 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart }) => {
       
       <div className="relative z-10 w-full max-w-4xl p-8 bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl overflow-y-auto max-h-[90vh]">
         <h1 className="text-4xl font-bold text-center text-amber-500 mb-2 font-cinzel">Aetheria</h1>
-        <p className="text-center text-slate-400 mb-8 font-light">书写你的无限传奇。</p>
+        <p className="text-center text-slate-400 mb-6 font-light">书写你的无限传奇。</p>
 
         <div className="space-y-8">
+           {/* API Settings Section */}
+           <div className="bg-slate-800/80 p-5 rounded-xl border border-amber-900/50 shadow-lg">
+                <div className="flex items-center gap-2 mb-4 border-b border-slate-700 pb-2">
+                    <Server className="w-5 h-5 text-amber-500" />
+                    <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider">游戏引擎配置 (AI Backend)</h2>
+                </div>
+
+                {/* Provider Tabs */}
+                <div className="flex gap-1 bg-slate-950 p-1 rounded-lg mb-4">
+                    <button 
+                        onClick={() => setProvider('gemini')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded transition-all ${provider === 'gemini' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                    >
+                        <Sparkles className="w-3 h-3" />
+                        官方 Google Gemini
+                    </button>
+                    <button 
+                        onClick={() => setProvider('openai')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded transition-all ${provider === 'openai' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                    >
+                        <Settings className="w-3 h-3" />
+                        自定义 / 极客模式
+                    </button>
+                </div>
+
+                {/* Gemini Config */}
+                {provider === 'gemini' && (
+                    <div className="space-y-3 animate-fade-in">
+                         <div className="relative">
+                            <Key className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                            <input 
+                                type="password" 
+                                value={apiKey}
+                                onChange={(e) => setApiKey(e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-600 rounded-lg pl-10 pr-4 py-2 text-white focus:ring-2 focus:ring-amber-500 focus:outline-none text-sm font-mono"
+                                placeholder="在此输入 Google Gemini API Key"
+                            />
+                        </div>
+                        <p className="text-xs text-slate-500 pl-1">
+                            推荐使用。速度快，完全免费。 <a href="https://aistudio.google.com/app/apikey" target="_blank" className="text-amber-500 hover:underline">点击获取 Key</a>
+                        </p>
+                    </div>
+                )}
+
+                {/* Custom Config */}
+                {provider === 'openai' && (
+                    <div className="space-y-4 animate-fade-in">
+                        {/* Quick Presets */}
+                        <div className="flex gap-2 flex-wrap">
+                             <button onClick={() => applyPreset('seu')} className="flex items-center gap-1 text-[10px] bg-blue-900/40 hover:bg-blue-800/60 text-blue-200 border border-blue-700/50 px-2 py-1.5 rounded transition-all">
+                                <School className="w-3 h-3" />
+                                SEU (东南大学)
+                             </button>
+                             <button onClick={() => applyPreset('openrouter')} className="text-[10px] bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1.5 rounded border border-slate-600 transition-all">
+                                OpenRouter
+                             </button>
+                             <button onClick={() => applyPreset('local')} className="text-[10px] bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1.5 rounded border border-slate-600 transition-all">
+                                本地 Ollama
+                             </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-[10px] uppercase text-slate-500 mb-1 flex items-center gap-1"><Globe className="w-3 h-3"/> Base URL (API 端点)</label>
+                                <input 
+                                    type="text" 
+                                    value={baseUrl}
+                                    onChange={(e) => setBaseUrl(e.target.value)}
+                                    className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500 font-mono"
+                                    placeholder="https://api.openai.com/v1"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] uppercase text-slate-500 mb-1 flex items-center gap-1"><Cpu className="w-3 h-3"/> Model Name (模型名称)</label>
+                                <input 
+                                    type="text" 
+                                    value={customModel}
+                                    onChange={(e) => setCustomModel(e.target.value)}
+                                    className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500 font-mono"
+                                    placeholder="gpt-4o, deepseek-chat, qwen-plus..."
+                                />
+                            </div>
+                        </div>
+                        
+                        <div className="relative">
+                            <Key className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                            <input 
+                                type="password" 
+                                value={apiKey}
+                                onChange={(e) => setApiKey(e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-600 rounded-lg pl-10 pr-4 py-2 text-white focus:ring-2 focus:ring-amber-500 focus:outline-none text-sm font-mono"
+                                placeholder="API Key (SEU 接口需要填写)"
+                            />
+                        </div>
+                        
+                        <div className="bg-amber-900/20 border border-amber-900/30 p-2 rounded text-xs text-amber-500/80">
+                            <strong>提示：</strong> 支持任何兼容 OpenAI 格式的接口 (DeepSeek, Moonshot, LocalAI, vLLM 等)。
+                        </div>
+                    </div>
+                )}
+            </div>
+
           {/* Name Section */}
           <div className="max-w-md mx-auto">
             <label className="block text-sm font-medium text-slate-300 mb-2 text-center">你的尊姓大名</label>
@@ -329,7 +480,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart }) => {
 
           <button 
             onClick={handleStart}
-            disabled={!name || !appearance}
+            disabled={(!apiKey && provider === 'gemini') || !name || !appearance}
             className="w-full bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl transition-all shadow-lg hover:shadow-amber-900/20 mt-4 font-cinzel tracking-wider flex items-center justify-center gap-2 text-lg transform hover:-translate-y-0.5 active:translate-y-0"
           >
             <Sword className="w-6 h-6" />

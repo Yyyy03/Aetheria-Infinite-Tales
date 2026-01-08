@@ -4,7 +4,7 @@ import StartScreen from './components/StartScreen';
 import GameInterface from './components/GameInterface';
 import GameManual from './components/GameManual';
 import { GameState, CharacterProfile, TurnData } from './types';
-import { generateNextTurn, generateSceneImage } from './services/geminiService';
+import { generateNextTurn } from './services/geminiService';
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>({
@@ -15,16 +15,30 @@ const App: React.FC = () => {
     isPlaying: false,
     isLoading: false,
     error: null,
-    combat: null
+    combat: null,
+    apiKey: null,
+    provider: 'gemini',
+    baseUrl: '',
+    customModel: ''
   });
 
   const [currentTurn, setCurrentTurn] = useState<TurnData | null>(null);
   const [isManualOpen, setIsManualOpen] = useState(false);
 
-  const handleStartGame = async (character: CharacterProfile) => {
+  const handleStartGame = async (
+      character: CharacterProfile, 
+      apiKey: string, 
+      provider: 'gemini' | 'openai', 
+      baseUrl: string, 
+      customModel: string
+  ) => {
     setGameState(prev => ({ 
         ...prev, 
         character, 
+        apiKey,
+        provider,
+        baseUrl,
+        customModel,
         isPlaying: true, 
         isLoading: true 
     }));
@@ -32,11 +46,21 @@ const App: React.FC = () => {
     // Initial prompt to start the game
     const initialPrompt = `开始冒险。角色：${character.name}，职业：${character.role}，外貌：${character.appearance}。请从一个适合 1 级冒险者的场景开始。`;
     
-    await processTurn(initialPrompt, character, [], [], null);
+    await processTurn(
+        initialPrompt, 
+        character, 
+        [], 
+        [], 
+        null, 
+        apiKey,
+        provider,
+        baseUrl,
+        customModel
+    );
   };
 
   const handleChoice = async (choice: string) => {
-    if (!gameState.character) return;
+    if (!gameState.character || !gameState.apiKey) return;
     
     // If user has 0 HP, this click resets the game (simple implementation for now)
     if (gameState.character.stats.hp <= 0) {
@@ -49,7 +73,11 @@ const App: React.FC = () => {
         gameState.character, 
         gameState.inventory, 
         gameState.quests,
-        gameState.combat
+        gameState.combat,
+        gameState.apiKey,
+        gameState.provider,
+        gameState.baseUrl,
+        gameState.customModel
     );
   };
 
@@ -58,7 +86,11 @@ const App: React.FC = () => {
       character: CharacterProfile,
       inventory: string[],
       quests: string[],
-      currentCombatState: GameState['combat']
+      currentCombatState: GameState['combat'],
+      apiKey: string,
+      provider: 'gemini' | 'openai',
+      baseUrl: string,
+      customModel: string
   ) => {
     setGameState(prev => ({ ...prev, isLoading: true, error: null }));
 
@@ -69,12 +101,16 @@ const App: React.FC = () => {
         }));
 
         const data = await generateNextTurn(
+            apiKey,
             apiHistory, 
             input, 
             inventory, 
             quests, 
             character,
-            currentCombatState
+            currentCombatState,
+            provider,
+            baseUrl,
+            customModel
         );
 
         // --- 1. Handle Stats & Combat Updates ---
@@ -130,7 +166,7 @@ const App: React.FC = () => {
         });
 
         // --- 3. Update State ---
-        setCurrentTurn({ ...data, imageUrl: undefined });
+        setCurrentTurn(data); // data now already contains resolved imageUrl
         setGameState(prev => ({
             ...prev,
             character: updatedCharacter,
@@ -144,18 +180,15 @@ const App: React.FC = () => {
             ]
         }));
 
-        // --- 4. Generate Image ---
-        if (!isDead) {
-            generateSceneImage(data.visualDescription).then(imageUrl => {
-                if (imageUrl) {
-                    setCurrentTurn(prev => prev ? { ...prev, imageUrl } : null);
-                }
-            });
-        }
-
-    } catch (err) {
+    } catch (err: any) {
         console.error(err);
-        setGameState(prev => ({ ...prev, error: "迷雾重重... (生成回合时出错)" }));
+        let errorMsg = "迷雾重重... (API调用失败，请检查设置)";
+        
+        if (err.message && err.message.includes("429")) {
+            errorMsg = "请求过多 (429) - 免费模型繁忙。正在尝试重连，如果持续失败，请更换模型或稍后再试。";
+        }
+        
+        setGameState(prev => ({ ...prev, error: errorMsg }));
     } finally {
         setGameState(prev => ({ ...prev, isLoading: false }));
     }

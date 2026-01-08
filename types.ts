@@ -7,6 +7,10 @@ export interface GameState {
   isLoading: boolean;
   error: string | null;
   combat: CombatState | null; // Track active combat
+  apiKey: string | null; // Store user provided API Key for TEXT (Qwen/OpenAI/Gemini)
+  provider: 'gemini' | 'openai'; // gemini = Official Google SDK, openai = OpenRouter/OpenAI compatible
+  baseUrl: string; // Used for OpenAI compatible providers
+  customModel: string; // Allow user to specify model for OpenRouter
 }
 
 export interface CharacterStats {
@@ -45,8 +49,17 @@ export interface CombatUpdate {
   enemyRarity?: EnemyRarity;
   playerDamageTaken: number;
   enemyDamageTaken: number;
-  combatLog: string; // A short summary like "You hit Goblin for 10 dmg"
+  combatLog: string;
+  skillUsed?: string; // Name of the skill used this turn (by player)
+  visualEffect?: 'fire' | 'ice' | 'lightning' | 'heal' | 'physical' | 'dark' | null; // Visual cue
 }
+
+// Expanded Scene Types for better variety
+export type SceneType = 
+  | 'forest' | 'dungeon' | 'town' | 'tavern' | 'castle' 
+  | 'cave' | 'mountain' | 'desert' | 'ruins' | 'swamp' 
+  | 'sea' | 'combat' | 'boss_fight' | 'mystery' | 'shop' | 'camp'
+  | 'snow' | 'volcano' | 'library' | 'heaven';
 
 export interface TurnData {
   narrative: string;
@@ -61,8 +74,9 @@ export interface TurnData {
     remove: string[];
   };
   combatUpdate: CombatUpdate;
-  visualDescription: string;
-  imageUrl?: string;
+  sceneType: SceneType; // AI decides the type of scene
+  visualDescription: string; // Kept for context if needed
+  imageUrl?: string; // Resolved path based on sceneType
 }
 
 export interface CombatState {

@@ -24,6 +24,36 @@ const GameInterface: React.FC<GameInterfaceProps> = ({ turnData, isLoading, onCh
   // Determine effects
   const shouldShake = combat && combat.playerDamageTaken > 0;
   const shouldFlashEnemy = combat && combat.enemyDamageTaken > 0;
+  
+  // Skill Visuals
+  const visualEffect = combat?.visualEffect;
+  const skillUsed = combat?.skillUsed;
+
+  const renderVisualEffect = () => {
+    if (!visualEffect || !shouldFlashEnemy) return null; // Only show attack effects if enemy took damage (usually)
+
+    switch (visualEffect) {
+        case 'fire':
+            return <div className="absolute inset-0 bg-orange-500/20 mix-blend-screen animate-burn z-40 flex items-center justify-center pointer-events-none">
+                <div className="w-full h-full bg-[radial-gradient(circle,rgba(255,100,0,0.6)_0%,rgba(0,0,0,0)_70%)] animate-pulse"></div>
+            </div>;
+        case 'ice':
+            return <div className="absolute inset-0 bg-blue-300/20 mix-blend-screen animate-freeze z-40 pointer-events-none border-[20px] border-blue-100/30 rounded-lg"></div>;
+        case 'lightning':
+            return <div className="absolute inset-0 bg-yellow-300/10 mix-blend-screen z-40 pointer-events-none animate-hit-flash"></div>;
+        case 'heal':
+             // Heal usually applies to player, handled differently, but if AI sets it here:
+            return <div className="absolute inset-0 flex items-center justify-center z-40 pointer-events-none">
+                <div className="text-green-400 font-bold text-4xl animate-heal">HP+</div>
+            </div>;
+        case 'physical':
+            return <div className="absolute top-1/2 left-1/4 w-1/2 h-2 bg-white rotate-45 animate-slash shadow-[0_0_10px_white] z-40 pointer-events-none"></div>;
+        case 'dark':
+            return <div className="absolute inset-0 bg-purple-900/40 mix-blend-multiply animate-pulse z-40 pointer-events-none"></div>;
+        default:
+            return null;
+    }
+  };
 
   // Rarity Styling
   const getRarityStyles = () => {
@@ -73,7 +103,7 @@ const GameInterface: React.FC<GameInterfaceProps> = ({ turnData, isLoading, onCh
     <div className={`flex-1 flex flex-col h-full bg-slate-950 overflow-hidden relative ${shouldShake ? 'animate-shake' : ''}`}>
       
       {/* Background/Image Layer */}
-      <div className="h-2/5 md:h-1/2 w-full relative bg-slate-900 border-b border-amber-900/30 group">
+      <div className="h-2/5 md:h-1/2 w-full relative bg-slate-900 border-b border-amber-900/30 group overflow-hidden">
         {turnData.imageUrl ? (
             <img 
               src={turnData.imageUrl} 
@@ -90,6 +120,18 @@ const GameInterface: React.FC<GameInterfaceProps> = ({ turnData, isLoading, onCh
                ) : (
                    <span className="text-slate-700 italic">暂无图像</span>
                )}
+            </div>
+        )}
+
+        {/* Skill Visual Overlay */}
+        {renderVisualEffect()}
+
+        {/* Skill Name Banner (Cinematic) */}
+        {skillUsed && (
+            <div className="absolute top-1/2 left-0 right-0 text-center z-50 pointer-events-none animate-fade-in">
+                <span className="bg-black/60 backdrop-blur-sm text-white px-6 py-2 rounded-full border border-white/20 font-cinzel text-xl tracking-widest shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+                    {skillUsed}
+                </span>
             </div>
         )}
 
