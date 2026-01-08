@@ -16,11 +16,18 @@ export interface CharacterStats {
   defense: number;
 }
 
+export interface Skill {
+  name: string;
+  description: string;
+  type: 'combat' | 'utility';
+}
+
 export interface CharacterProfile {
   name: string;
   role: string;
   appearance: string;
   stats: CharacterStats;
+  skills: Skill[];
 }
 
 export interface ChatMessage {
@@ -62,6 +69,7 @@ export interface CombatState {
   enemyName: string;
   enemyHp: number;
   enemyMaxHp: number;
+  enemymaxHp: number;
   enemyRarity: EnemyRarity;
 }
 

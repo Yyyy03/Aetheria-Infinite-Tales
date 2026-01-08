@@ -1,5 +1,5 @@
 import React from 'react';
-import { Backpack, ScrollText, User, HelpCircle, Heart, Shield, Swords } from 'lucide-react';
+import { Backpack, ScrollText, User, HelpCircle, Heart, Shield, Swords, Zap } from 'lucide-react';
 import { CharacterProfile } from '../types';
 
 interface SidebarProps {
@@ -63,11 +63,32 @@ const Sidebar: React.FC<SidebarProps> = ({ inventory, quests, character, onOpenM
                         </div>
                     </div>
                 </div>
-
-                <p className="text-xs text-slate-500 mt-2 italic line-clamp-2 border-t border-slate-700/50 pt-2">"{character.appearance}"</p>
             </div>
         )}
       </div>
+
+      {/* Skills Section */}
+      {character && character.skills && character.skills.length > 0 && (
+          <div className="p-6 border-b border-slate-700 bg-slate-900">
+             <div className="flex items-center gap-2 mb-4 text-amber-500">
+                <Zap className="w-5 h-5" />
+                <h3 className="font-bold uppercase tracking-wider text-sm font-cinzel">职业技能</h3>
+             </div>
+             <div className="space-y-2">
+                {character.skills.map((skill, idx) => (
+                    <div key={idx} className="bg-slate-800 p-2.5 rounded border border-slate-700/50 hover:border-amber-500/30 transition-colors">
+                        <div className="flex justify-between items-center mb-1">
+                            <span className="text-sm font-bold text-slate-200">{skill.name}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${skill.type === 'combat' ? 'bg-red-900/30 text-red-400' : 'bg-blue-900/30 text-blue-400'}`}>
+                                {skill.type === 'combat' ? '战斗' : '辅助'}
+                            </span>
+                        </div>
+                        <p className="text-xs text-slate-500">{skill.description}</p>
+                    </div>
+                ))}
+             </div>
+          </div>
+      )}
 
       {/* Quests */}
       <div className="p-6 flex-1">

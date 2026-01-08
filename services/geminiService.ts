@@ -18,6 +18,7 @@ export const generateNextTurn = async (
 
   const inventoryStr = currentInventory.join(", ");
   const questStr = currentQuests.join(", ");
+  const skillsStr = character.skills ? character.skills.map(s => `[${s.name}]: ${s.description}`).join(", ") : "None";
   
   let combatStr = "NO ACTIVE COMBAT";
   let rarityInstruction = "";
@@ -45,6 +46,7 @@ export const generateNextTurn = async (
     - Character: ${character.name} (HP: ${character.stats.hp}/${character.stats.maxHp})
     - Class: ${character.role}
     - Attack Power: ${character.stats.attack}
+    - Skills/Abilities: ${skillsStr}
     - Inventory: [${inventoryStr}]
     - Active Quests: [${questStr}]
     - Combat Status: ${combatStr}
@@ -56,6 +58,7 @@ export const generateNextTurn = async (
     - If 'Combat Status' is active, simulate one turn of battle.
     - If user action initiates a fight, start combat.
     - Calculate damage based on stats/items.
+    - CRITICAL: Provide choices that allow the player to use their specific SKILLS if relevant.
   `;
 
   const responseSchema = {
