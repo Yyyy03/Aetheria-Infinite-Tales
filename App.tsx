@@ -102,7 +102,8 @@ const App: React.FC = () => {
                 newCombatState = {
                     enemyName: combatUpdate.enemyName || "Unknown Enemy",
                     enemyHp: combatUpdate.enemyHp || 0,
-                    enemyMaxHp: combatUpdate.enemyMaxHp || 100
+                    enemyMaxHp: combatUpdate.enemyMaxHp || 100,
+                    enemyRarity: combatUpdate.enemyRarity || 'normal' // Preserve or set rarity
                 };
             } else {
                 newCombatState = null; // Combat ended or wasn't active

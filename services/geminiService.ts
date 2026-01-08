@@ -18,9 +18,27 @@ export const generateNextTurn = async (
 
   const inventoryStr = currentInventory.join(", ");
   const questStr = currentQuests.join(", ");
-  const combatStr = combatState 
-    ? `COMBAT ACTIVE vs ${combatState.enemyName} (HP: ${combatState.enemyHp}/${combatState.enemyMaxHp})` 
-    : "NO ACTIVE COMBAT";
+  
+  let combatStr = "NO ACTIVE COMBAT";
+  let rarityInstruction = "";
+
+  if (combatState) {
+    combatStr = `COMBAT ACTIVE vs ${combatState.enemyName} [${combatState.enemyRarity.toUpperCase()}] (HP: ${combatState.enemyHp}/${combatState.enemyMaxHp})`;
+  } else {
+    // If no combat is active, roll for potential rarity IF a fight starts this turn.
+    const roll = Math.random();
+    let potentialRarity = "normal";
+    
+    if (roll > 0.90) { // 10% chance for Boss
+        potentialRarity = "boss";
+    } else if (roll > 0.70) { // 20% chance for Elite
+        potentialRarity = "elite";
+    }
+
+    if (potentialRarity !== "normal") {
+        rarityInstruction = `\n    SYSTEM NOTE: If a NEW combat encounter is triggered in this turn, it MUST be a '${potentialRarity.toUpperCase()}' enemy. Scale HP and stats accordingly (Elite=2x, Boss=4x). Make the description epic.`;
+    }
+  }
   
   const contextPrompt = `
     Current Status:
@@ -30,6 +48,7 @@ export const generateNextTurn = async (
     - Inventory: [${inventoryStr}]
     - Active Quests: [${questStr}]
     - Combat Status: ${combatStr}
+    ${rarityInstruction}
     
     User Action: ${lastChoice}
     
@@ -72,6 +91,7 @@ export const generateNextTurn = async (
             enemyName: { type: Type.STRING, description: "Name of the enemy if combat is starting/active" },
             enemyHp: { type: Type.NUMBER, description: "Current HP of enemy" },
             enemyMaxHp: { type: Type.NUMBER, description: "Max HP of enemy" },
+            enemyRarity: { type: Type.STRING, enum: ["normal", "elite", "boss"], description: "Rarity of the enemy" },
             playerDamageTaken: { type: Type.NUMBER, description: "Damage taken by player this turn" },
             enemyDamageTaken: { type: Type.NUMBER, description: "Damage dealt to enemy this turn" },
             combatLog: { type: Type.STRING, description: "Short summary of damage numbers (e.g. 'You dealt 12 dmg, took 5 dmg')" }

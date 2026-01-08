@@ -28,11 +28,14 @@ export interface ChatMessage {
   text: string;
 }
 
+export type EnemyRarity = 'normal' | 'elite' | 'boss';
+
 export interface CombatUpdate {
   isActive: boolean;
   enemyName?: string;
   enemyHp?: number;
   enemyMaxHp?: number;
+  enemyRarity?: EnemyRarity;
   playerDamageTaken: number;
   enemyDamageTaken: number;
   combatLog: string; // A short summary like "You hit Goblin for 10 dmg"
@@ -59,6 +62,7 @@ export interface CombatState {
   enemyName: string;
   enemyHp: number;
   enemyMaxHp: number;
+  enemyRarity: EnemyRarity;
 }
 
 export interface ApiResponse {

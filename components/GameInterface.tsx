@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { TurnData, CombatUpdate } from '../types';
-import { Loader2, Skull } from 'lucide-react';
+import { Loader2, Skull, Star } from 'lucide-react';
 
 interface GameInterfaceProps {
   turnData: TurnData | null;
@@ -21,6 +21,43 @@ const GameInterface: React.FC<GameInterfaceProps> = ({ turnData, isLoading, onCh
   const combat = turnData?.combatUpdate;
   const isCombatActive = combat?.isActive;
 
+  // Determine effects
+  const shouldShake = combat && combat.playerDamageTaken > 0;
+  const shouldFlashEnemy = combat && combat.enemyDamageTaken > 0;
+
+  // Rarity Styling
+  const getRarityStyles = () => {
+    const rarity = combat?.enemyRarity || 'normal';
+    switch (rarity) {
+        case 'boss':
+            return {
+                border: 'border-amber-400',
+                bg: 'bg-slate-900/90',
+                text: 'text-amber-400',
+                shadow: 'shadow-[0_0_30px_rgba(251,191,36,0.4)]',
+                icon: <Star className="w-5 h-5 fill-amber-400 text-amber-400 animate-pulse" />
+            };
+        case 'elite':
+            return {
+                border: 'border-slate-300',
+                bg: 'bg-slate-900/80',
+                text: 'text-slate-200',
+                shadow: 'shadow-[0_0_20px_rgba(203,213,225,0.3)]',
+                icon: <Skull className="w-5 h-5 text-slate-200" />
+            };
+        default:
+            return {
+                border: 'border-red-900/50',
+                bg: 'bg-slate-900/80',
+                text: 'text-red-500',
+                shadow: 'shadow-[0_0_15px_rgba(220,38,38,0.3)]',
+                icon: <Skull className="w-5 h-5" />
+            };
+    }
+  };
+
+  const rarityStyle = getRarityStyles();
+
   if (!turnData && isLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-slate-950 p-8">
@@ -33,10 +70,10 @@ const GameInterface: React.FC<GameInterfaceProps> = ({ turnData, isLoading, onCh
   if (!turnData) return null;
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden relative">
+    <div className={`flex-1 flex flex-col h-full bg-slate-950 overflow-hidden relative ${shouldShake ? 'animate-shake' : ''}`}>
       
       {/* Background/Image Layer */}
-      <div className="h-2/5 md:h-1/2 w-full relative bg-slate-900 border-b border-amber-900/30">
+      <div className="h-2/5 md:h-1/2 w-full relative bg-slate-900 border-b border-amber-900/30 group">
         {turnData.imageUrl ? (
             <img 
               src={turnData.imageUrl} 
@@ -55,21 +92,33 @@ const GameInterface: React.FC<GameInterfaceProps> = ({ turnData, isLoading, onCh
                )}
             </div>
         )}
+
+        {/* Enemy Hit Flash Overlay */}
+        {shouldFlashEnemy && (
+             <div className="absolute inset-0 mix-blend-overlay z-10 animate-hit-flash pointer-events-none"></div>
+        )}
         
         {/* Combat Overlay UI */}
         {isCombatActive && combat && combat.enemyName && (
             <div className="absolute top-4 left-0 right-0 px-4 md:px-12 flex justify-center animate-fade-in z-20">
-                <div className="bg-slate-900/80 backdrop-blur-md border border-red-900/50 p-4 rounded-xl w-full max-w-lg shadow-[0_0_15px_rgba(220,38,38,0.3)]">
+                <div className={`${rarityStyle.bg} backdrop-blur-md border ${rarityStyle.border} p-4 rounded-xl w-full max-w-lg ${rarityStyle.shadow} ${shouldFlashEnemy ? 'border-white/50' : ''}`}>
                     <div className="flex justify-between items-center mb-2">
-                        <div className="flex items-center gap-2 text-red-500 font-bold font-cinzel">
-                             <Skull className="w-5 h-5" />
-                             <span>{combat.enemyName}</span>
+                        <div className={`flex items-center gap-2 font-bold font-cinzel ${rarityStyle.text}`}>
+                             {rarityStyle.icon}
+                             <div className="flex flex-col">
+                                <span>{combat.enemyName}</span>
+                                {combat.enemyRarity !== 'normal' && (
+                                    <span className="text-[10px] uppercase tracking-widest opacity-80">{combat.enemyRarity}</span>
+                                )}
+                             </div>
                         </div>
                         <span className="text-slate-300 text-sm">{combat.enemyHp} / {combat.enemyMaxHp}</span>
                     </div>
-                    <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                    <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700 relative">
+                         {/* White flash bar behind the red bar for hit impact */}
+                         <div className={`absolute top-0 left-0 h-full bg-white transition-opacity duration-200 ${shouldFlashEnemy ? 'opacity-100' : 'opacity-0'}`} style={{ width: `${Math.max(0, Math.min(100, ((combat.enemyHp || 0) / (combat.enemyMaxHp || 1)) * 100))}%` }}></div>
                          <div 
-                             className="h-full bg-red-600 transition-all duration-300" 
+                             className="h-full bg-red-600 transition-all duration-300 relative z-10 mix-blend-multiply" 
                              style={{ width: `${Math.max(0, Math.min(100, ((combat.enemyHp || 0) / (combat.enemyMaxHp || 1)) * 100))}%` }}
                          ></div>
                     </div>
@@ -82,9 +131,9 @@ const GameInterface: React.FC<GameInterfaceProps> = ({ turnData, isLoading, onCh
             </div>
         )}
 
-        {/* Damage Flash Effect - Simple Red Overlay if player took damage */}
-        {combat && combat.playerDamageTaken > 0 && (
-            <div className="absolute inset-0 bg-red-500/20 pointer-events-none animate-pulse z-10"></div>
+        {/* Player Damage Red Overlay */}
+        {shouldShake && (
+            <div className="absolute inset-0 bg-red-600/30 pointer-events-none animate-pulse z-30"></div>
         )}
 
         {/* Gradient Overlay for Text Readability transition */}
